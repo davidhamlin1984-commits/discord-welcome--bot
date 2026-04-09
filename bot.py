@@ -23,6 +23,8 @@ def normalize_value(value: str) -> str:
 def find_role_case_insensitive(guild: discord.Guild, user_input: str) -> discord.Role | None:
     target = normalize_value(user_input)
     for role in guild.roles:
+        if role.is_default() or role.managed:
+            continue
         if normalize_value(role.name) == target:
             return role
     return None
@@ -47,7 +49,16 @@ def looks_like_alliance_role_name(role_name: str) -> bool:
     return True
 
 
-def collect_example_alliance_roles(guild: discor
+def collect_example_alliance_roles(guild: discord.Guild) -> list[str]:
+    names = []
+    for role in guild.roles:
+        if role.is_default() or role.managed:
+            continue
+        if normalize_value(role.name) in {normalize_value(FRIEND_ROLE_NAME), "registration bot", "carl-bot"}:
+            continue
+        if looks_like_alliance_role_name(role.name):
+            names.append(role.name)
+    return names[:8]
 
 
 class RegistrationModal(discord.ui.Modal, title="Server Registration"):
@@ -79,20 +90,32 @@ class RegistrationModal(discord.ui.Modal, title="Server Registration"):
     async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
         if guild is None:
-            await interaction.response.send_message("This can only be used inside a server.", ephemeral=True)
+            await interaction.response.send_message(
+                "This can only be used inside a server.",
+                ephemeral=True,
+            )
             return
 
         me = guild.me
         if me is None:
-            await interaction.response.send_message("I couldn't access my server member profile.", ephemeral=True)
+            await interaction.response.send_message(
+                "I couldn't access my server member profile.",
+                ephemeral=True,
+            )
             return
 
         if not me.guild_permissions.manage_roles:
-            await interaction.response.send_message("I need the Manage Roles permission.", ephemeral=True)
+            await interaction.response.send_message(
+                "I need the Manage Roles permission.",
+                ephemeral=True,
+            )
             return
 
         if not me.guild_permissions.manage_nicknames:
-            await interaction.response.send_message("I need the Manage Nicknames permission.", ephemeral=True)
+            await interaction.response.send_message(
+                "I need the Manage Nicknames permission.",
+                ephemeral=True,
+            )
             return
 
         state_input = str(self.state).strip()
@@ -149,14 +172,21 @@ class RegistrationModal(discord.ui.Modal, title="Server Registration"):
 
         member = interaction.user
         if not isinstance(member, discord.Member):
-            await interaction.response.send_message("I couldn't resolve your server member profile.", ephemeral=True)
+            await interaction.response.send_message(
+                "I couldn't resolve your server member profile.",
+                ephemeral=True,
+            )
             return
 
         roles_to_remove = []
         for role in member.roles:
             if role.is_default() or role in target_roles:
                 continue
-            if looks_like_state_role_name(role.name) or is_rank_role_name(role.name) or looks_like_alliance_role_name(role.name):
+            if (
+                looks_like_state_role_name(role.name)
+                or is_rank_role_name(role.name)
+                or looks_like_alliance_role_name(role.name)
+            ):
                 if role < me.top_role:
                     roles_to_remove.append(role)
 
@@ -178,7 +208,10 @@ class RegistrationModal(discord.ui.Modal, title="Server Registration"):
             if nickname_updated:
                 message = f"Done. Nickname set to **{nickname}** and roles assigned: **{role_names}**"
             else:
-                message = f"Roles assigned: **{role_names}**. I could not update your nickname. Make sure my bot role is above yours."
+                message = (
+                    f"Roles assigned: **{role_names}**. "
+                    f"I could not update your nickname. Make sure my bot role is above yours."
+                )
 
             await interaction.response.send_message(message, ephemeral=True)
 
@@ -188,14 +221,21 @@ class RegistrationModal(discord.ui.Modal, title="Server Registration"):
                 ephemeral=True,
             )
         except discord.HTTPException as e:
-            await interaction.response.send_message(f"Discord returned an error: `{e}`", ephemeral=True)
+            await interaction.response.send_message(
+                f"Discord returned an error: `{e}`",
+                ephemeral=True,
+            )
 
 
 class ArrivalView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Start Registration", style=discord.ButtonStyle.primary, custom_id="start_registration_button")
+    @discord.ui.button(
+        label="Start Registration",
+        style=discord.ButtonStyle.primary,
+        custom_id="start_registration_button",
+    )
     async def start_registration(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(RegistrationModal())
 
@@ -217,19 +257,13 @@ async def setup_arrival(ctx: commands.Context):
 
     embed = discord.Embed(
         title="Welcome",
-        description="Click the button below to register. After clicking, fill in your state role, alliance role, rank role, and player name.",
+        description=(
+            "Click the button below to register.\n\n"
+            "You will be asked for your state role, alliance role, rank role, and player name."
+        ),
     )
-    msg = await ctx.send(embed=embed, view=ArrivalView())
 
-    # Delete the welcome message after 60 seconds
-    async def delete_later(message):
-        await asyncio.sleep(60)
-        try:
-            await message.delete()
-        except:
-            pass
-
-    bot.loop.create_task(delete_later(msg))
+    await ctx.send(embed=embed, view=ArrivalView())
     await ctx.reply("Arrival registration button posted.")
 
 

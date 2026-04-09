@@ -243,3 +243,4 @@ if __name__ == "__main__":
     if not TOKEN:
         raise RuntimeError("Set the DISCORD_BOT_TOKEN environment variable before starting the bot.")
     bot.run(TOKEN)
+

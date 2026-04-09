@@ -47,14 +47,7 @@ def looks_like_alliance_role_name(role_name: str) -> bool:
     return True
 
 
-def collect_example_alliance_roles(guild: discord.Guild) -> list[str]:
-    names = []
-    for role in guild.roles:
-        if role.is_default():
-            continue
-        if looks_like_alliance_role_name(role.name):
-            names.append(role.name)
-    return names[:8]
+def collect_example_alliance_roles(guild: discor
 
 
 class RegistrationModal(discord.ui.Modal, title="Server Registration"):
@@ -226,7 +219,17 @@ async def setup_arrival(ctx: commands.Context):
         title="Welcome",
         description="Click the button below to register. After clicking, fill in your state role, alliance role, rank role, and player name.",
     )
-    await ctx.send(embed=embed, view=ArrivalView())
+    msg = await ctx.send(embed=embed, view=ArrivalView())
+
+    # Delete the welcome message after 60 seconds
+    async def delete_later(message):
+        await asyncio.sleep(60)
+        try:
+            await message.delete()
+        except:
+            pass
+
+    bot.loop.create_task(delete_later(msg))
     await ctx.reply("Arrival registration button posted.")
 
 

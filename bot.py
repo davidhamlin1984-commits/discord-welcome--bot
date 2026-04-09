@@ -78,8 +78,7 @@ async def ask_for_existing_role(ctx: commands.Context, label: str, helper_text: 
     while True:
         prompt = f"Enter your **{label}** exactly as the role exists in this server."
         if helper_text:
-prompt += f"\n{helper_text}"
-
+    prompt += f"\n{helper_text}"
         answer = await ask_question(ctx, prompt)
         if answer is None:
             return None
